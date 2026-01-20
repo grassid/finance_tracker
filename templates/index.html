@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+    <!-- Load Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Load Chart.js for graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #a8a8a8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .font-inter { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 p-4 sm:p-8 font-inter">
+
+    <header class="mb-8 max-w-6xl mx-auto">
+        <div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 shadow-lg text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-3xl font-extrabold flex items-center">
+                        <span class="mr-3">💰</span> Finance Tracker
+                    </h1>
+                    <p class="text-indigo-100 mt-1 text-sm">
+                        Your personal finance dashboard
+                    </p>
+                </div>
+                <div class="text-right flex items-center gap-4">
+                    <div>
+                        <p class="text-indigo-200 text-xs uppercase tracking-wide mb-1">Select Year</p>
+                        <select id="year-selector" class="bg-white/20 text-white border border-white/30 rounded-lg px-4 py-2 font-bold text-lg focus:outline-none focus:ring-2 focus:ring-white/50 cursor-pointer hover:bg-white/30 transition">
+                            {% for year in available_years %}
+                            <option value="{{ year }}" class="text-gray-900">{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="border-l border-white/30 pl-4">
+                        <p class="text-indigo-200 text-xs uppercase tracking-wide">Current Period</p>
+                        <p class="text-xl font-bold">{{ current_month }} {{ current_year }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto">
+        <!-- Message/Error Display -->
+        <div id="message-container" class="mb-6"></div>
+
+        <!-- --- Action Buttons and Form Toggle --- -->
+        <div class="flex justify-start items-center mb-6">
+            <button id="toggle-form-btn" class="flex items-center px-5 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition transform hover:scale-[1.02]">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Add New Transaction
+            </button>
+        </div>
+
+        <!-- --- Transaction Form --- -->
+        <div id="transaction-form-container" class="hidden">
+            <form id="transaction-form" class="p-6 bg-gradient-to-br from-white to-indigo-50 rounded-2xl shadow-lg border-2 border-indigo-100 mb-8">
+                <div class="flex items-center mb-4">
+                    <span class="text-2xl mr-3">✏️</span>
+                    <h2 class="text-2xl font-bold text-indigo-700">Add New Transaction</h2>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="type">Transaction Type</label>
+                        <input type="text" id="type" name="type" placeholder="e.g., expense, income, investment..." required class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700" for="amount">Amount (€)</label>
+                        <input type="number" step="0.01" id="amount" name="amount" placeholder="e.g., 50.00" required class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    </div>
+
+                    <div>
+                         <label class="block text-sm font-medium text-gray-700" for="date">Date</label>
+                        <input type="date" id="date" name="date" required class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700" for="category">Category</label>
+                    <select id="category" name="category" required class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
+                        <option value="" disabled selected>-- Select a category --</option>
+                        {% for cat in expense_categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
+                        {% for cat in investment_categories %}
+                        <option value="{{ cat }}">{{ cat }}</option>
+                        {% endfor %}
+                        <option value="Monthly Salary/General">Monthly Salary/General</option>
+                    </select>
+                </div>
+                
+                <div class="mt-6 flex justify-end space-x-3">
+                     <button type="submit" class="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition transform hover:scale-[1.02] flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                        Save Transaction
+                    </button>
+                </div>
+            </form>
+        </div>
+
+
+        <!-- --- Summary Dashboard --- -->
+        <div class="mt-8">
+            <div class="flex items-center mb-5">
+                <span class="text-2xl mr-3">📊</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800">Financial Summary</h2>
+                    <p class="text-sm text-gray-500">Click any card to view detailed breakdown</p>
+                </div>
+            </div>
+            
+            <div id="metrics-dashboard" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <!-- Metrics will be inserted here by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- --- Monthly Flow Chart --- -->
+        <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-100 mt-8">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-3">📉</span>
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-800">Monthly Financial Flow</h2>
+                        <p class="text-sm text-gray-500"><span class="year-display">{{ current_year }}</span> Overview</p>
+                    </div>
+                </div>
+                <div class="flex space-x-2 p-1 bg-gray-100 rounded-lg">
+                    <button id="chart-bar-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition bg-indigo-600 text-white shadow">
+                        📊 Bar
+                    </button>
+                    <button id="chart-pie-btn" class="px-4 py-2 text-sm font-medium rounded-lg transition text-gray-600 hover:bg-gray-200">
+                        🥧 Pie
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Income Type Filters -->
+            <div class="mb-3 p-3 bg-green-50 rounded-xl border border-green-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-green-700">Income Types:</span>
+                </div>
+                <div id="income-filters" class="flex flex-wrap gap-2">
+                    <button id="filter-income" onclick="toggleIncomeType('income')" class="income-filter-btn px-3 py-1 text-sm font-medium rounded-lg transition border-2" style="background-color: rgba(16, 185, 129, 0.7); border-color: #10b981; color: white;">
+                        Income (Salary)
+                    </button>
+                    <button id="filter-investment" onclick="toggleIncomeType('investmentIncome')" class="income-filter-btn px-3 py-1 text-sm font-medium rounded-lg transition border-2" style="background-color: rgba(6, 182, 212, 0.7); border-color: #06b6d4; color: white;">
+                        Investment Income
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Expense Category Filters -->
+            <div class="mb-4 p-3 bg-red-50 rounded-xl border border-red-200">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-medium text-red-700">Expense Categories:</span>
+                    <div class="flex space-x-2">
+                        <button onclick="selectAllCategories()" class="px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition">Select All</button>
+                        <button onclick="deselectAllCategories()" class="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded hover:bg-gray-300 transition">Deselect All</button>
+                    </div>
+                </div>
+                <div id="category-filters" class="flex flex-wrap gap-2">
+                    <!-- Category buttons will be inserted here by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Filter Summary -->
+            <div id="filter-summary" class="mb-3 p-2 bg-indigo-50 rounded-lg border border-indigo-200 text-sm">
+                <span class="font-medium text-indigo-700">Net Flow = </span>
+                <span id="income-summary" class="text-green-600"></span>
+                <span class="text-gray-500"> − </span>
+                <span id="expense-summary" class="text-red-600"></span>
+            </div>
+            
+            <div style="height: 400px;">
+                 <canvas id="monthlyChart"></canvas>
+            </div>
+        </div>
+
+        <!-- --- Historical Monthly Snapshot --- -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+            <div class="lg:col-span-1">
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                    <div class="flex items-center mb-4">
+                        <span class="text-xl mr-2">📅</span>
+                        <div>
+                            <h2 class="text-lg font-bold text-gray-800">Monthly Snapshot</h2>
+                            <p class="text-xs text-gray-500"><span class="year-display">{{ current_year }}</span> Net Flow</p>
+                        </div>
+                    </div>
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 rounded-lg">
+                            <tr>
+                                <th class="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase rounded-tl-lg">Month</th>
+                                <th class="py-2 px-3 text-right text-xs font-medium text-gray-500 uppercase rounded-tr-lg">Net Flow</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monthly-snapshot-body" class="bg-white divide-y divide-gray-200">
+                            <tr><td colspan="2" class="text-center py-4 text-gray-500 italic">No historical data.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- --- Transaction History Table --- -->
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center">
+                            <span class="text-xl mr-2">📝</span>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-800">Transaction History</h2>
+                                <p class="text-xs text-gray-500"><span id="transaction-count">0</span> transactions in <span class="year-display">{{ current_year }}</span></p>
+                            </div>
+                        </div>
+                        <div id="filter-indicator" class="hidden flex items-center">
+                            <span class="text-sm text-indigo-600 font-medium mr-2">
+                                Filtered: <span id="filter-month-name" class="font-bold"></span>
+                            </span>
+                            <button onclick="window.clearMonthFilter()" class="px-3 py-1 text-sm bg-indigo-100 text-indigo-700 rounded-lg hover:bg-indigo-200 transition flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Amount (€)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactions-table-body" class="bg-white divide-y divide-gray-200">
+                                <tr><td colspan="5" class="text-center py-8 text-gray-500 italic">Loading transactions...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const formContainer = document.getElementById('transaction-form-container');
+        const toggleBtn = document.getElementById('toggle-form-btn');
+        const form = document.getElementById('transaction-form');
+        const typeInput = document.getElementById('type');
+        const categorySelect = document.getElementById('category');
+        const dateInput = document.getElementById('date');
+        const metricsDashboard = document.getElementById('metrics-dashboard');
+        const tableBody = document.getElementById('transactions-table-body');
+        const messageContainer = document.getElementById('message-container');
+        const monthlySnapshotBody = document.getElementById('monthly-snapshot-body');
+        const chartBarBtn = document.getElementById('chart-bar-btn');
+        const chartPieBtn = document.getElementById('chart-pie-btn');
+        const canvas = document.getElementById('monthlyChart');
+        
+        let chartInstance = null;
+        let monthlyDataCache = []; // To store data for chart type toggling
+        let expenseCategoriesCache = []; // To store expense categories
+        let selectedCategories = new Set(); // Track selected expense categories
+        let selectedIncomeTypes = new Set(['income', 'investmentIncome']); // Track selected income types
+        let currentChartType = 'bar'; // Track current chart type
+
+        // Data injected by Flask template
+        const EXPENSE_CATS = {{ expense_categories | tojson }};
+        const INVESTMENT_CATS = {{ investment_categories | tojson }};
+        const CURRENT_YEAR = {{ current_year }};
+        const CURRENT_MONTH = "{{ current_month }}";
+        const AVAILABLE_YEARS = {{ available_years | tojson }};
+        
+        // Year selector
+        const yearSelector = document.getElementById('year-selector');
+        let selectedYear = AVAILABLE_YEARS.length > 0 ? AVAILABLE_YEARS[0] : CURRENT_YEAR;
+
+        // Set default date to today
+        dateInput.value = new Date().toISOString().split('T')[0];
+
+        // --- UI Functions ---
+
+        const showMessage = (message, type = 'success') => {
+            const colorClass = type === 'error' ? 'bg-red-100 border-red-400 text-red-700' : 'bg-green-100 border-green-400 text-green-700';
+            messageContainer.innerHTML = `
+                <div class="${colorClass} border px-4 py-3 rounded-xl shadow-md" role="alert">
+                    <span class="block sm:inline">${message}</span>
+                </div>
+            `;
+            setTimeout(() => { messageContainer.innerHTML = ''; }, 5000);
+        };
+
+        const toggleForm = () => {
+            const isHidden = formContainer.classList.toggle('hidden');
+            toggleBtn.innerHTML = isHidden 
+                ? `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Add New Transaction`
+                : `<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Close Form`;
+        };
+        
+        const formatCurrency = (value) => {
+             return parseFloat(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        };
+
+        // Category colors for consistent visualization
+        const categoryColors = {
+            'Tax': { bg: 'rgba(239, 68, 68, 0.7)', border: '#ef4444' },
+            'Hotel/Vacation/Travel': { bg: 'rgba(249, 115, 22, 0.7)', border: '#f97316' },
+            'Withdraw': { bg: 'rgba(234, 179, 8, 0.7)', border: '#eab308' },
+            'Regalo': { bg: 'rgba(236, 72, 153, 0.7)', border: '#ec4899' },
+            'Money Transfer': { bg: 'rgba(139, 92, 246, 0.7)', border: '#8b5cf6' },
+            'Refund': { bg: 'rgba(34, 197, 94, 0.7)', border: '#22c55e' },
+            'Benefit': { bg: 'rgba(6, 182, 212, 0.7)', border: '#06b6d4' },
+            'Expense/Investment': { bg: 'rgba(59, 130, 246, 0.7)', border: '#3b82f6' },
+        };
+        
+        const defaultColor = { bg: 'rgba(107, 114, 128, 0.7)', border: '#6b7280' };
+
+        function getCategoryColor(category) {
+            return categoryColors[category] || defaultColor;
+        }
+
+        function renderCategoryFilters(categories) {
+            const container = document.getElementById('category-filters');
+            container.innerHTML = '';
+            
+            categories.forEach(category => {
+                const color = getCategoryColor(category);
+                const btn = document.createElement('button');
+                btn.className = 'category-filter-btn px-3 py-1 text-sm font-medium rounded-lg transition border-2';
+                btn.dataset.category = category;
+                btn.style.backgroundColor = color.bg;
+                btn.style.borderColor = color.border;
+                btn.style.color = 'white';
+                btn.textContent = category;
+                btn.onclick = () => toggleCategory(category);
+                
+                // Initially all selected
+                selectedCategories.add(category);
+                
+                container.appendChild(btn);
+            });
+        }
+
+        function toggleCategory(category) {
+            if (selectedCategories.has(category)) {
+                selectedCategories.delete(category);
+            } else {
+                selectedCategories.add(category);
+            }
+            updateCategoryButtonStyles();
+            renderChart(monthlyDataCache, currentChartType);
+        }
+
+        window.selectAllCategories = function() {
+            expenseCategoriesCache.forEach(cat => selectedCategories.add(cat));
+            updateCategoryButtonStyles();
+            renderChart(monthlyDataCache, currentChartType);
+        };
+
+        window.deselectAllCategories = function() {
+            selectedCategories.clear();
+            updateCategoryButtonStyles();
+            renderChart(monthlyDataCache, currentChartType);
+        };
+
+        window.toggleIncomeType = function(incomeType) {
+            if (selectedIncomeTypes.has(incomeType)) {
+                selectedIncomeTypes.delete(incomeType);
+            } else {
+                selectedIncomeTypes.add(incomeType);
+            }
+            updateIncomeButtonStyles();
+            renderChart(monthlyDataCache, currentChartType);
+        };
+
+        function updateIncomeButtonStyles() {
+            const incomeBtn = document.getElementById('filter-income');
+            const investmentBtn = document.getElementById('filter-investment');
+            
+            if (selectedIncomeTypes.has('income')) {
+                incomeBtn.style.backgroundColor = 'rgba(16, 185, 129, 0.7)';
+                incomeBtn.style.borderColor = '#10b981';
+                incomeBtn.style.color = 'white';
+                incomeBtn.style.opacity = '1';
+            } else {
+                incomeBtn.style.backgroundColor = 'transparent';
+                incomeBtn.style.borderColor = '#10b981';
+                incomeBtn.style.color = '#10b981';
+                incomeBtn.style.opacity = '0.6';
+            }
+            
+            if (selectedIncomeTypes.has('investmentIncome')) {
+                investmentBtn.style.backgroundColor = 'rgba(6, 182, 212, 0.7)';
+                investmentBtn.style.borderColor = '#06b6d4';
+                investmentBtn.style.color = 'white';
+                investmentBtn.style.opacity = '1';
+            } else {
+                investmentBtn.style.backgroundColor = 'transparent';
+                investmentBtn.style.borderColor = '#06b6d4';
+                investmentBtn.style.color = '#06b6d4';
+                investmentBtn.style.opacity = '0.6';
+            }
+        }
+
+        function updateCategoryButtonStyles() {
+            document.querySelectorAll('.category-filter-btn').forEach(btn => {
+                const category = btn.dataset.category;
+                const color = getCategoryColor(category);
+                
+                if (selectedCategories.has(category)) {
+                    btn.style.backgroundColor = color.bg;
+                    btn.style.borderColor = color.border;
+                    btn.style.color = 'white';
+                    btn.style.opacity = '1';
+                } else {
+                    btn.style.backgroundColor = 'transparent';
+                    btn.style.borderColor = color.border;
+                    btn.style.color = color.border;
+                    btn.style.opacity = '0.6';
+                }
+            });
+        }
+
+        // --- Chart Rendering ---
+        const renderChart = (data, chartType) => {
+            monthlyDataCache = data;
+            currentChartType = chartType;
+            
+            // Update Monthly Snapshot with filtered data
+            renderMonthlySnapshot(data, true);
+            
+            // Destroy previous chart instance if it exists
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const ctx = canvas.getContext('2d');
+            const labels = data.map(m => m.name);
+            
+            // Calculate filtered expenses based on selected categories
+            const filteredExpenses = data.map(m => {
+                let total = 0;
+                if (m.expensesByCategory) {
+                    for (const [cat, amount] of Object.entries(m.expensesByCategory)) {
+                        if (selectedCategories.has(cat)) {
+                            total += amount;
+                        }
+                    }
+                }
+                return total;
+            });
+            
+            // Update filter summary display
+            const incomeItems = [];
+            if (selectedIncomeTypes.has('income')) incomeItems.push('Income');
+            if (selectedIncomeTypes.has('investmentIncome')) incomeItems.push('Investment');
+            const expenseItems = Array.from(selectedCategories);
+            
+            document.getElementById('income-summary').textContent = incomeItems.length > 0 ? incomeItems.join(' + ') : '(none)';
+            document.getElementById('expense-summary').textContent = expenseItems.length > 0 ? expenseItems.join(' + ') : '(none)';
+            
+            // Debug logging
+            console.log('=== FILTER STATE ===');
+            console.log('Selected Income Types:', Array.from(selectedIncomeTypes));
+            console.log('Selected Expense Categories:', Array.from(selectedCategories));
+            console.log('Filtered Expenses per month:', filteredExpenses);
+            
+            // Store original data for recalculation
+            const originalIncome = data.map(m => m.income);
+            const originalInvestment = data.map(m => m.investmentIncome);
+            
+            // Color classes for buttons
+            chartBarBtn.classList.toggle('bg-indigo-600', chartType === 'bar');
+            chartBarBtn.classList.toggle('text-white', chartType === 'bar');
+            chartBarBtn.classList.toggle('shadow', chartType === 'bar');
+            chartPieBtn.classList.toggle('bg-indigo-600', chartType === 'pie');
+            chartPieBtn.classList.toggle('text-white', chartType === 'pie');
+            chartPieBtn.classList.toggle('shadow', chartType === 'pie');
+            chartBarBtn.classList.toggle('text-gray-600', chartType === 'pie');
+            chartPieBtn.classList.toggle('text-gray-600', chartType === 'bar');
+
+            // Pie Chart Configuration - Show expense breakdown by category
+            if (chartType === 'pie') {
+                // Calculate totals by category for pie chart
+                const categoryTotals = {};
+                data.forEach(m => {
+                    if (m.expensesByCategory) {
+                        for (const [cat, amount] of Object.entries(m.expensesByCategory)) {
+                            if (selectedCategories.has(cat)) {
+                                categoryTotals[cat] = (categoryTotals[cat] || 0) + amount;
+                            }
+                        }
+                    }
+                });
+                
+                const pieLabels = Object.keys(categoryTotals);
+                const pieData = Object.values(categoryTotals);
+                const pieColors = pieLabels.map(cat => getCategoryColor(cat));
+                
+                chartInstance = new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: pieLabels,
+                        datasets: [{
+                            data: pieData,
+                            backgroundColor: pieColors.map(c => c.bg),
+                            borderColor: pieColors.map(c => c.border),
+                            borderWidth: 2,
+                            hoverOffset: 10
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                                labels: {
+                                    padding: 15,
+                                    font: {
+                                        size: 12
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const label = context.label || '';
+                                        const value = context.parsed;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return `${label}: €${formatCurrency(value)} (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+                return;
+            }
+
+            // Bar Chart Configuration (default) - Show categories as stacked or grouped
+            const datasets = [];
+            
+            // Add expense category datasets (stacked, below axis)
+            expenseCategoriesCache.forEach((category, index) => {
+                if (selectedCategories.has(category)) {
+                    const color = getCategoryColor(category);
+                    datasets.push({
+                        label: category,
+                        data: data.map(m => {
+                            const amount = m.expensesByCategory?.[category] || 0;
+                            return -amount; // Negative for below axis
+                        }),
+                        backgroundColor: color.bg,
+                        borderColor: color.border,
+                        type: 'bar',
+                        stack: 'expenses',
+                        order: 10 + index
+                    });
+                }
+            });
+            
+            // Add Income dataset (only if selected)
+            if (selectedIncomeTypes.has('income')) {
+                datasets.push({
+                    label: 'Income (Salary)',
+                    data: data.map(m => m.income),
+                    backgroundColor: 'rgba(16, 185, 129, 0.7)',
+                    borderColor: '#10b981',
+                    type: 'bar',
+                    stack: 'income',
+                    order: 2
+                });
+            }
+            
+            // Add Investment Income dataset (only if selected)
+            if (selectedIncomeTypes.has('investmentIncome')) {
+                datasets.push({
+                    label: 'Investment Income',
+                    data: data.map(m => m.investmentIncome),
+                    backgroundColor: 'rgba(6, 182, 212, 0.7)',
+                    borderColor: '#06b6d4',
+                    type: 'bar',
+                    stack: 'income',
+                    order: 3
+                });
+            }
+            
+            // Calculate Net Flow with filtered income AND filtered expenses
+            const netFlowData = data.map((m, i) => {
+                let totalIncome = 0;
+                if (selectedIncomeTypes.has('income')) {
+                    totalIncome += m.income;
+                }
+                if (selectedIncomeTypes.has('investmentIncome')) {
+                    totalIncome += m.investmentIncome;
+                }
+                const netFlow = totalIncome - filteredExpenses[i];
+                console.log(`${m.name}: Income=${totalIncome}, Expenses=${filteredExpenses[i]}, NetFlow=${netFlow}`);
+                return netFlow;
+            });
+            console.log('Net Flow Data:', netFlowData);
+            
+            // Add Net Flow line
+            datasets.push({
+                label: 'Net Flow (Savings)',
+                data: netFlowData,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79, 70, 229, 0.2)',
+                type: 'line',
+                fill: true,
+                tension: 0.4,
+                order: 0,
+                borderWidth: 3,
+                pointRadius: 5
+            });
+
+            chartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        x: {
+                            stacked: true,
+                        },
+                        y: {
+                            stacked: true,
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Amount (€)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '€' + value.toLocaleString();
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                boxWidth: 12,
+                                padding: 10,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        const value = Math.abs(context.parsed.y);
+                                        label += '€' + formatCurrency(value);
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+        
+        // --- Data Fetching & Rendering ---
+
+        const fetchData = async (year = null) => {
+            try {
+                const targetYear = year || selectedYear;
+                const response = await fetch(`/api/data?year=${targetYear}`);
+                const data = await response.json();
+                
+                if (data.error) throw new Error(data.error);
+
+                // Update selected year from response
+                selectedYear = data.selected_year || targetYear;
+                
+                // Update year selector if needed
+                if (yearSelector.value != selectedYear) {
+                    yearSelector.value = selectedYear;
+                }
+                
+                // Update year displays in the UI
+                updateYearDisplays(selectedYear);
+
+                // Store expense categories and render filters
+                expenseCategoriesCache = data.expense_categories || [];
+                renderCategoryFilters(expenseCategoriesCache);
+
+                renderMetrics(data.metrics);
+                renderTransactions(data.transactions);
+                renderChart(data.monthly_data, 'bar'); // Initial chart load (also renders monthly snapshot)
+
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showMessage(`Could not connect to Flask server or load data: ${error.message}.`, 'error');
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-red-500 italic">Error loading data. See console for details.</td></tr>`;
+                monthlySnapshotBody.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-red-500 italic">Error loading data.</td></tr>`;
+            }
+        };
+        
+        const updateYearDisplays = (year) => {
+            // Update any elements that display the year
+            document.querySelectorAll('.year-display').forEach(el => {
+                el.textContent = year;
+            });
+        };
+
+        const renderMetrics = (metrics) => {
+            metricsDashboard.innerHTML = ''; // Clear dashboard
+            
+            // Determine the month label based on selected year
+            const monthLabel = selectedYear === CURRENT_YEAR ? CURRENT_MONTH : 'December';
+            const periodLabel = selectedYear === CURRENT_YEAR ? 'Current Month' : 'Last Month';
+            const yearLabel = selectedYear === CURRENT_YEAR ? 'Year to Date' : 'Full Year';
+            
+            const metricOrder = [
+                { key: 'Annual Income YTD', title: `Total Income ${selectedYear}`, subtitle: yearLabel, color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', icon: '💰', link: `/details/income?year=${selectedYear}` },
+                { key: 'Monthly Income Actual', title: `Income ${monthLabel}`, subtitle: periodLabel, color: 'text-emerald-600', bgColor: 'bg-emerald-50', borderColor: 'border-emerald-200', icon: '💵', link: `/details/income?year=${selectedYear}&month=${monthLabel}` },
+                
+                { key: 'Total Annual Expenses', title: `Expenses ${selectedYear}`, subtitle: 'Annual Total', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200', icon: '🧾', link: `/details/expenses?year=${selectedYear}` },
+                { key: 'Total Monthly Expenses', title: `Expenses ${monthLabel}`, subtitle: periodLabel, color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200', icon: '💸', link: `/details/expenses?year=${selectedYear}&month=${monthLabel}` },
+                { key: 'Total Week Expenses', title: 'Weekly Average', subtitle: `${selectedYear} Average`, color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', icon: '📅', link: `/details/expenses?year=${selectedYear}` },
+                { key: 'Net Monthly Flow', title: `Net Flow ${monthLabel}`, subtitle: 'Income - Expenses', color: metrics['Net Monthly Flow'] >= 0 ? 'text-green-600' : 'text-red-600', bgColor: metrics['Net Monthly Flow'] >= 0 ? 'bg-green-50' : 'bg-red-50', borderColor: metrics['Net Monthly Flow'] >= 0 ? 'border-green-200' : 'border-red-200', icon: metrics['Net Monthly Flow'] >= 0 ? '✅' : '⚠️', link: `/details/netflow?year=${selectedYear}` },
+            ];
+            
+            metricOrder.forEach(({ key, title, subtitle, color, bgColor, borderColor, icon, link }) => {
+                if (key in metrics) {
+                    const value = metrics[key];
+                    const card = document.createElement('a');
+                    card.href = link;
+                    card.className = `${bgColor} p-5 rounded-2xl shadow-md border-2 ${borderColor} transform hover:shadow-xl hover:scale-[1.02] transition duration-300 cursor-pointer block`;
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-2xl">${icon}</span>
+                            <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">${subtitle}</span>
+                        </div>
+                        <p class="text-sm font-semibold text-gray-700">${title}</p>
+                        <p class="mt-1 text-2xl font-extrabold ${color}">
+                            €${formatCurrency(value)}
+                        </p>
+                        <p class="mt-3 text-xs text-indigo-600 font-medium flex items-center hover:text-indigo-800">
+                            View details
+                            <svg class="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                            </svg>
+                        </p>
+                    `;
+                    metricsDashboard.appendChild(card);
+                }
+            });
+        };
+        
+        // Define these in global scope so onclick handlers can access them
+        window.currentMonthFilter = null;
+        window.allTransactionsCache = [];
+
+        window.filterTransactionsByMonth = (monthName) => {
+            window.currentMonthFilter = monthName;
+            const rows = document.querySelectorAll('.transaction-row');
+            const monthRows = document.querySelectorAll('.snapshot-month-row');
+            let visibleCount = 0;
+
+            // Filter transaction rows
+            rows.forEach(row => {
+                if (row.dataset.month === monthName) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Highlight selected month in snapshot
+            monthRows.forEach(row => {
+                if (row.dataset.month === monthName) {
+                    row.classList.add('bg-indigo-100');
+                    row.classList.remove('hover:bg-indigo-50');
+                } else {
+                    row.classList.remove('bg-indigo-100');
+                    row.classList.add('hover:bg-indigo-50');
+                }
+            });
+
+            // Update transaction count
+            document.getElementById('transaction-count').textContent = visibleCount;
+            document.getElementById('filter-indicator').classList.remove('hidden');
+            document.getElementById('filter-month-name').textContent = monthName;
+        };
+
+        window.clearMonthFilter = () => {
+            window.currentMonthFilter = null;
+            const rows = document.querySelectorAll('.transaction-row');
+            const monthRows = document.querySelectorAll('.snapshot-month-row');
+
+            // Show all transaction rows
+            rows.forEach(row => {
+                row.style.display = '';
+            });
+
+            // Remove highlight from month rows
+            monthRows.forEach(row => {
+                row.classList.remove('bg-indigo-100');
+                row.classList.add('hover:bg-indigo-50');
+            });
+
+            // Update transaction count
+            document.getElementById('transaction-count').textContent = rows.length;
+            document.getElementById('filter-indicator').classList.add('hidden');
+        };
+
+        const renderMonthlySnapshot = (monthlyData, useFilters = false) => {
+            monthlySnapshotBody.innerHTML = '';
+            
+            if (monthlyData.length === 0) {
+                 monthlySnapshotBody.innerHTML = `<tr><td colspan="2" class="text-center py-4 text-gray-500 italic">No historical data.</td></tr>`;
+                 return;
+            }
+
+            let totalNetFlow = 0;
+            const isFiltered = useFilters && (selectedCategories.size < expenseCategoriesCache.length || selectedIncomeTypes.size < 2);
+
+            monthlyData.forEach(m => {
+                // Calculate filtered expenses for this month
+                let filteredExpense = 0;
+                if (useFilters && m.expensesByCategory) {
+                    for (const [cat, amount] of Object.entries(m.expensesByCategory)) {
+                        if (selectedCategories.has(cat)) {
+                            filteredExpense += amount;
+                        }
+                    }
+                } else {
+                    filteredExpense = m.expenses;
+                }
+                
+                // Calculate filtered income for this month
+                let totalIncome = 0;
+                if (useFilters) {
+                    if (selectedIncomeTypes.has('income')) {
+                        totalIncome += m.income;
+                    }
+                    if (selectedIncomeTypes.has('investmentIncome')) {
+                        totalIncome += m.investmentIncome;
+                    }
+                } else {
+                    totalIncome = m.income + m.investmentIncome;
+                }
+                
+                const netFlow = totalIncome - filteredExpense;
+                
+                const flowColor = netFlow >= 0 ? 'text-green-600' : 'text-red-600';
+                totalNetFlow += netFlow;
+                
+                const row = monthlySnapshotBody.insertRow();
+                row.className = 'snapshot-month-row hover:bg-indigo-50 cursor-pointer transition';
+                row.dataset.month = m.name;
+                row.onclick = () => window.filterTransactionsByMonth(m.name);
+                row.innerHTML = `
+                    <td class="py-2 px-3 whitespace-nowrap text-sm text-gray-900 flex items-center">
+                        ${m.name}
+                        <svg class="w-3 h-3 ml-2 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                        </svg>
+                    </td>
+                    <td class="py-2 px-3 whitespace-nowrap text-sm font-medium text-right ${flowColor}">
+                        €${formatCurrency(netFlow)}
+                    </td>
+                `;
+            });
+
+            // Add total row with filter indicator
+            const totalColor = totalNetFlow >= 0 ? 'text-green-600' : 'text-red-600';
+            const totalRow = monthlySnapshotBody.insertRow();
+            totalRow.className = 'cursor-pointer hover:bg-gray-200 transition';
+            totalRow.onclick = () => window.clearMonthFilter();
+            totalRow.innerHTML = `
+                <td class="py-3 px-3 whitespace-nowrap text-sm font-bold text-gray-900 border-t-2 border-gray-300">
+                    TOTAL ${isFiltered ? '<span class="text-xs font-normal text-indigo-600">(filtered)</span>' : ''}
+                    <span class="text-xs font-normal text-indigo-500 ml-1">(show all)</span>
+                </td>
+                <td class="py-3 px-3 whitespace-nowrap text-sm font-bold text-right border-t-2 border-gray-300 ${totalColor}">
+                    €${formatCurrency(totalNetFlow)}
+                </td>
+            `;
+        };
+
+
+        const renderTransactions = (transactions) => {
+            tableBody.innerHTML = ''; // Clear table
+            document.getElementById('transaction-count').textContent = transactions.length;
+
+            if (transactions.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-gray-500 italic">No transactions recorded yet.</td></tr>`;
+                return;
+            }
+
+            // Month names for filtering
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+            // Sort transactions by date descending (newest first)
+            transactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            transactions.forEach(t => {
+                const amount = parseFloat(t.amount);
+                const isNegative = amount < 0;
+                const typeClass = isNegative ? 'bg-red-100 text-red-800' : (t.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800');
+                const amountColor = isNegative ? 'text-red-600' : 'text-green-600';
+                
+                // Extract month name from date for filtering
+                const dateObj = new Date(t.date);
+                const monthName = monthNames[dateObj.getMonth()];
+
+                const row = tableBody.insertRow();
+                row.className = 'transaction-row hover:bg-gray-50 transition';
+                row.dataset.month = monthName;
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${t.id.substring(0, 8)}...</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${t.date_display}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${typeClass}">
+                            ${t.type.replace('_', ' ').toUpperCase()}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${t.category}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-right">
+                        <span class="${amountColor}">
+                            €${formatCurrency(amount)}
+                        </span>
+                    </td>
+                `;
+            });
+            
+            // Reset filter indicator when transactions are re-rendered
+            window.currentMonthFilter = null;
+            document.getElementById('filter-indicator').classList.add('hidden');
+        };
+
+
+        // --- Event Listeners ---
+
+        toggleBtn.addEventListener('click', toggleForm);
+        chartBarBtn.addEventListener('click', () => { currentChartType = 'bar'; renderChart(monthlyDataCache, 'bar'); });
+        chartPieBtn.addEventListener('click', () => { currentChartType = 'pie'; renderChart(monthlyDataCache, 'pie'); });
+        
+        // Year selector change handler
+        yearSelector.addEventListener('change', (e) => {
+            selectedYear = parseInt(e.target.value);
+            fetchData(selectedYear);
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const data = {};
+            formData.forEach((value, key) => { data[key] = value; });
+
+            try {
+                const response = await fetch('/api/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    showMessage('Transaction added successfully!');
+                    form.reset();
+                    dateInput.value = new Date().toISOString().split('T')[0]; // Reset date input
+                    fetchData(); // Reload data
+                    toggleForm(); // Hide form
+                } else {
+                    showMessage(`Failed to add transaction: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('Network error. Check if the Python server is running.', 'error');
+            }
+        });
+
+        // Initialize
+        fetchData();
+    });
+</script>
+
+</body>
+</html>

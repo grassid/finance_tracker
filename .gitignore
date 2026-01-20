@@ -1,0 +1,35 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+*.sqlite
+.DS_Store
+nqa-services-data/
+ethgen/
+dcr-configs/
+
+#virtual environment
+backbone-env/
+venv/
+
+# Test binary, build with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
+.glide/
+.idea/
+.vscode/
+
+# Migration variables and runlists
+templates/migrations/variable_files/*
+templates/migrations/rendered_runlists/*
+
+# Tracking File for Netbox Conflict Avoidance
+*_tracking.json
+
+#Ingore CSV File with sensitive Data
+*.csv
