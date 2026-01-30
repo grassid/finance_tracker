@@ -5,12 +5,16 @@ import uuid
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 
-app = Flask(__name__)
-app.json.sort_keys = False  # Disable JSON key sorting to avoid None comparison issues
-
 # Use absolute path based on script location
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CSV_FILE = os.path.join(BASE_DIR, 'finance_data.csv')
+
+# Initialize Flask app with correct template folder
+app = Flask(__name__, template_folder=os.path.join(BASE_DIR, 'templates'))
+app.json.sort_keys = False  # Disable JSON key sorting to avoid None comparison issues
+
+# Data file location (stored in user's current working directory for portability)
+DATA_DIR = os.getcwd()
+CSV_FILE = os.path.join(DATA_DIR, 'finance_data.csv')
 
 # --- Configuration ---
 DAILY_EXPENSE_CATEGORIES = [
@@ -496,6 +500,22 @@ def details(metric_type):
     )
 
 
-if __name__ == '__main__':
+def main():
+    """Entry point for the finance-tracker command."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Finance Tracker - Personal Finance Dashboard')
+    parser.add_argument('--host', default='127.0.0.1', help='Host to bind to (default: 127.0.0.1)')
+    parser.add_argument('--port', '-p', type=int, default=5050, help='Port to run on (default: 5050)')
+    parser.add_argument('--debug', '-d', action='store_true', help='Run in debug mode')
+    
+    args = parser.parse_args()
+    
     initialize_csv()
-    app.run(debug=True, host='127.0.0.1', port=5050)
+    print(f"\n💰 Finance Tracker starting...")
+    print(f"📊 Open your browser at: http://{args.host}:{args.port}\n")
+    app.run(debug=args.debug, host=args.host, port=args.port)
+
+
+if __name__ == '__main__':
+    main()

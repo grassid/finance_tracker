@@ -47,26 +47,77 @@ Filter your view by:
 
 ### Installation
 
+#### Option 1: Install as a Package (Recommended)
+
 1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/finance-tracker.git
    cd finance-tracker
    ```
 
-2. **Install dependencies**
+2. **Create a virtual environment** (recommended)
    ```bash
-   pip install flask
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
-3. **Run the application**
+3. **Install the application**
+   ```bash
+   pip install .
+   ```
+   
+   Or for development (editable mode):
+   ```bash
+   pip install -e .
+   ```
+
+4. **Run the application**
+   ```bash
+   finance-tracker
+   ```
+
+5. **Open your browser**
+   ```
+   http://127.0.0.1:5050
+   ```
+
+#### Option 2: Run Directly
+
+1. **Clone and install dependencies**
+   ```bash
+   git clone https://github.com/yourusername/finance-tracker.git
+   cd finance-tracker
+   pip install -r requirements.txt
+   ```
+
+2. **Run the application**
    ```bash
    python finance_tracker.py
    ```
 
-4. **Open your browser**
-   ```
-   http://127.0.0.1:5050
-   ```
+### Command Line Options
+
+```bash
+finance-tracker --help
+```
+
+| Option | Description |
+|--------|-------------|
+| `--host` | Host to bind to (default: 127.0.0.1) |
+| `--port`, `-p` | Port to run on (default: 5050) |
+| `--debug`, `-d` | Run in debug mode |
+
+**Examples:**
+```bash
+# Run on a different port
+finance-tracker -p 8080
+
+# Run accessible from network
+finance-tracker --host 0.0.0.0
+
+# Run in debug mode
+finance-tracker --debug
+```
 
 ---
 
@@ -130,6 +181,10 @@ The following expense categories are available:
 finance-tracker/
 ├── finance_tracker.py    # Main Flask application
 ├── finance_data.csv      # Transaction data (gitignored)
+├── pyproject.toml        # Package configuration
+├── requirements.txt      # Python dependencies (alternative)
+├── MANIFEST.in           # Package manifest
+├── LICENSE               # MIT License
 ├── templates/
 │   ├── index.html        # Main dashboard
 │   └── details.html      # Detailed transaction view
