@@ -28,7 +28,7 @@
                         <span class="mr-3">💰</span> Finance Tracker
                     </h1>
                     <p class="text-indigo-100 mt-1 text-sm">
-                        Your personal finance dashboard
+                        Your personal finance dashboard <span class="text-indigo-200 text-xs ml-2">• powered by Daniele Grassi</span>
                     </p>
                 </div>
                 <div class="text-right flex items-center gap-4">
@@ -132,7 +132,10 @@
                     <span class="text-2xl mr-3">📉</span>
                     <div>
                         <h2 class="text-xl font-bold text-gray-800">Monthly Financial Flow</h2>
-                        <p class="text-sm text-gray-500"><span class="year-display">{{ current_year }}</span> Overview</p>
+                        <p class="text-sm text-gray-500">
+                            <span class="year-display">{{ current_year }}</span> Overview
+                            <span id="chart-month-filter" class="hidden ml-2 px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium"></span>
+                        </p>
                     </div>
                 </div>
                 <div class="flex space-x-2 p-1 bg-gray-100 rounded-lg">
@@ -318,17 +321,24 @@
 
         // Category colors for consistent visualization
         const categoryColors = {
-            'Tax': { bg: 'rgba(239, 68, 68, 0.7)', border: '#ef4444' },
-            'Hotel/Vacation/Travel': { bg: 'rgba(249, 115, 22, 0.7)', border: '#f97316' },
-            'Withdraw': { bg: 'rgba(234, 179, 8, 0.7)', border: '#eab308' },
-            'Regalo': { bg: 'rgba(236, 72, 153, 0.7)', border: '#ec4899' },
-            'Money Transfer': { bg: 'rgba(139, 92, 246, 0.7)', border: '#8b5cf6' },
-            'Refund': { bg: 'rgba(34, 197, 94, 0.7)', border: '#22c55e' },
-            'Benefit': { bg: 'rgba(6, 182, 212, 0.7)', border: '#06b6d4' },
-            'Expense/Investment': { bg: 'rgba(59, 130, 246, 0.7)', border: '#3b82f6' },
+            'Tax': { bg: 'rgba(239, 68, 68, 0.7)', border: '#ef4444' },                    // Red
+            'Hotel/Vacation/Travel': { bg: 'rgba(249, 115, 22, 0.7)', border: '#f97316' }, // Orange
+            'Withdraw': { bg: 'rgba(234, 179, 8, 0.7)', border: '#eab308' },               // Yellow
+            'Regalo': { bg: 'rgba(236, 72, 153, 0.7)', border: '#ec4899' },                // Pink
+            'Money Transfer': { bg: 'rgba(139, 92, 246, 0.7)', border: '#8b5cf6' },        // Purple
+            'Refund': { bg: 'rgba(34, 197, 94, 0.7)', border: '#22c55e' },                 // Green
+            'Benefit': { bg: 'rgba(6, 182, 212, 0.7)', border: '#06b6d4' },                // Cyan
+            'Expense/Investment': { bg: 'rgba(59, 130, 246, 0.7)', border: '#3b82f6' },    // Blue
+            'Baby Sitter': { bg: 'rgba(244, 114, 182, 0.7)', border: '#f472b6' },          // Light Pink
+            'Grocery': { bg: 'rgba(132, 204, 22, 0.7)', border: '#84cc16' },               // Lime
+            'Membership': { bg: 'rgba(168, 85, 247, 0.7)', border: '#a855f7' },            // Violet
+            'General': { bg: 'rgba(75, 85, 99, 0.7)', border: '#4b5563' },                 // Gray
+            'Restaurant': { bg: 'rgba(251, 146, 60, 0.7)', border: '#fb923c' },            // Light Orange
+            'Petrol': { bg: 'rgba(45, 212, 191, 0.7)', border: '#2dd4bf' },                // Teal
+            'Sport/Leisure': { bg: 'rgba(56, 189, 248, 0.7)', border: '#38bdf8' },         // Sky Blue
         };
         
-        const defaultColor = { bg: 'rgba(107, 114, 128, 0.7)', border: '#6b7280' };
+        const defaultColor = { bg: 'rgba(156, 163, 175, 0.7)', border: '#9ca3af' };
 
         function getCategoryColor(category) {
             return categoryColors[category] || defaultColor;
@@ -337,6 +347,9 @@
         function renderCategoryFilters(categories) {
             const container = document.getElementById('category-filters');
             container.innerHTML = '';
+            
+            // Clear and rebuild selectedCategories to ensure all categories are included
+            selectedCategories.clear();
             
             categories.forEach(category => {
                 const color = getCategoryColor(category);
@@ -496,9 +509,13 @@
 
             // Pie Chart Configuration - Show expense breakdown by category
             if (chartType === 'pie') {
-                // Calculate totals by category for pie chart
+                // Calculate totals by category for pie chart (filtered by month if selected)
                 const categoryTotals = {};
                 data.forEach(m => {
+                    // Skip if month filter is active and this month doesn't match
+                    if (window.currentMonthFilter && m.name !== window.currentMonthFilter) {
+                        return;
+                    }
                     if (m.expensesByCategory) {
                         for (const [cat, amount] of Object.entries(m.expensesByCategory)) {
                             if (selectedCategories.has(cat)) {
@@ -750,7 +767,8 @@
                 { key: 'Total Annual Expenses', title: `Expenses ${selectedYear}`, subtitle: 'Annual Total', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200', icon: '🧾', link: `/details/expenses?year=${selectedYear}` },
                 { key: 'Total Monthly Expenses', title: `Expenses ${monthLabel}`, subtitle: periodLabel, color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200', icon: '💸', link: `/details/expenses?year=${selectedYear}&month=${monthLabel}` },
                 { key: 'Total Week Expenses', title: 'Weekly Average', subtitle: `${selectedYear} Average`, color: 'text-orange-600', bgColor: 'bg-orange-50', borderColor: 'border-orange-200', icon: '📅', link: `/details/expenses?year=${selectedYear}` },
-                { key: 'Net Monthly Flow', title: `Net Flow ${monthLabel}`, subtitle: 'Income - Expenses', color: metrics['Net Monthly Flow'] >= 0 ? 'text-green-600' : 'text-red-600', bgColor: metrics['Net Monthly Flow'] >= 0 ? 'bg-green-50' : 'bg-red-50', borderColor: metrics['Net Monthly Flow'] >= 0 ? 'border-green-200' : 'border-red-200', icon: metrics['Net Monthly Flow'] >= 0 ? '✅' : '⚠️', link: `/details/netflow?year=${selectedYear}` },
+                { key: 'Net Annual Flow', title: `Net Flow ${selectedYear}`, subtitle: 'Annual Savings', color: metrics['Net Annual Flow'] >= 0 ? 'text-green-600' : 'text-red-600', bgColor: metrics['Net Annual Flow'] >= 0 ? 'bg-green-50' : 'bg-red-50', borderColor: metrics['Net Annual Flow'] >= 0 ? 'border-green-200' : 'border-red-200', icon: metrics['Net Annual Flow'] >= 0 ? '📈' : '📉', link: `/details/netflow?year=${selectedYear}` },
+                { key: 'Net Monthly Flow', title: `Net Flow ${monthLabel}`, subtitle: 'Monthly Savings', color: metrics['Net Monthly Flow'] >= 0 ? 'text-green-600' : 'text-red-600', bgColor: metrics['Net Monthly Flow'] >= 0 ? 'bg-green-50' : 'bg-red-50', borderColor: metrics['Net Monthly Flow'] >= 0 ? 'border-green-200' : 'border-red-200', icon: metrics['Net Monthly Flow'] >= 0 ? '✅' : '⚠️', link: `/details/netflow?year=${selectedYear}` },
             ];
             
             metricOrder.forEach(({ key, title, subtitle, color, bgColor, borderColor, icon, link }) => {
@@ -815,6 +833,14 @@
             document.getElementById('transaction-count').textContent = visibleCount;
             document.getElementById('filter-indicator').classList.remove('hidden');
             document.getElementById('filter-month-name').textContent = monthName;
+            
+            // Update chart month filter indicator
+            const chartMonthFilter = document.getElementById('chart-month-filter');
+            chartMonthFilter.textContent = `Showing: ${monthName}`;
+            chartMonthFilter.classList.remove('hidden');
+            
+            // Re-render chart with month filter
+            renderChart(monthlyDataCache, currentChartType);
         };
 
         window.clearMonthFilter = () => {
@@ -836,6 +862,12 @@
             // Update transaction count
             document.getElementById('transaction-count').textContent = rows.length;
             document.getElementById('filter-indicator').classList.add('hidden');
+            
+            // Hide chart month filter indicator
+            document.getElementById('chart-month-filter').classList.add('hidden');
+            
+            // Re-render chart without month filter
+            renderChart(monthlyDataCache, currentChartType);
         };
 
         const renderMonthlySnapshot = (monthlyData, useFilters = false) => {

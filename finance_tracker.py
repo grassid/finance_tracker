@@ -15,7 +15,7 @@ CSV_FILE = os.path.join(BASE_DIR, 'finance_data.csv')
 # --- Configuration ---
 DAILY_EXPENSE_CATEGORIES = [
     'Tax', 'Hotel/Vacation/Travel', 'Withdraw', 'Regalo', 
-    'Money Transfer', 'Refund', 'Benefit', 'Expense/Investment', 'Baby Sitter', 'Grocery', 'Membership', 'General', 'Restaurant'
+    'Money Transfer', 'Refund', 'Benefit', 'Expense/Investment', 'Baby Sitter', 'Grocery', 'Membership', 'General', 'Restaurant', 'Petrol', 'Sport/Leisure'
 ]
 INVESTMENT_INCOME_CATEGORIES = [
     'Interest/Investment'
@@ -237,6 +237,7 @@ def calculate_metrics(transactions, selected_year=None):
         # Annual Actuals (Total Income = Salary + Investment)
         'Annual Income YTD': annual_income_total,
         'Annual Income Projection': total_annual_income_est,
+        'Net Annual Flow': annual_income_total - annual_expense_total,
         
         # Latest Month (Total Income = Salary + Investment)
         'Total Monthly Expenses': monthly_expense_actual,
@@ -311,15 +312,16 @@ def get_data():
                 for k, v in month['expensesByCategory'].items()
             }
     
-    # Filter out None from expense_categories
-    expense_cats = [c for c in metrics['expense_categories'] if c is not None]
+    # Use all configured expense categories (not just ones with data)
+    # This ensures all categories are available for filtering
+    all_expense_cats = DAILY_EXPENSE_CATEGORIES.copy()
              
     # Separate dashboard metrics and historical/monthly data
     data_for_frontend = {
         'metrics': {k: round(v, 2) for k, v in metrics.items() if isinstance(v, (int, float))},
         'transactions': filtered_transactions,
         'monthly_data': metrics['monthly_data'],
-        'expense_categories': expense_cats,
+        'expense_categories': all_expense_cats,
         'selected_year': selected_year,
         'available_years': available_years
     }
@@ -350,7 +352,7 @@ def get_next_id():
 # Categories that should have negative amounts (expenses)
 EXPENSE_CATEGORIES = [
     'Tax', 'Hotel/Vacation/Travel', 'Withdraw', 'Regalo', 
-    'Money Transfer', 'Expense/Investment', 'Baby Sitter', 'Grocery', 'Membership', 'General', 'Restaurant'
+    'Money Transfer', 'Expense/Investment', 'Baby Sitter', 'Grocery', 'Membership', 'General', 'Restaurant', 'Petrol', 'Sport/Leisure'
 ]
 
 @app.route('/api/add', methods=['POST'])
